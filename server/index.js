@@ -7,18 +7,15 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { fileURLToPath } from 'url';
 
-// Force Node.js to use Google & Cloudflare Public DNS to bypass local ISP SRV resolution blocks (ECONNREFUSED)
+// Fix for Windows / Serverless DNS SRV resolution
 try {
   dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
   dns.setDefaultResultOrder('ipv4first');
-} catch (e) {
-  // Ignored if unsupported
-}
+} catch (e) {}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env from server directory
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
@@ -30,18 +27,26 @@ app.use(express.json());
 // Path to JSON persistence file
 const dataPath = path.join(__dirname, 'data', 'db.json');
 
-// Global DB data cache
+// Default Seed Categories
+const DEFAULT_SEED_CATEGORIES = [
+  { id: "cat-inc-1", name: "Salary", type: "income", icon: "Briefcase", color: "#10b981", subcategories: ["Primary Job", "Bonus", "Overtime"] },
+  { id: "cat-inc-2", name: "Freelance & Consulting", type: "income", icon: "Laptop", color: "#06b6d4", subcategories: ["Web Design", "Development", "Mentorship"] },
+  { id: "cat-inc-3", name: "Investments", type: "income", icon: "TrendingUp", color: "#8b5cf6", subcategories: ["Dividends", "Crypto", "Real Estate"] },
+  { id: "cat-exp-1", name: "Food & Dining", type: "expense", icon: "Utensils", color: "#f43f5e", subcategories: ["Groceries", "Restaurants", "Coffee & Snacks", "Food Delivery"] },
+  { id: "cat-exp-2", name: "Housing & Utilities", type: "expense", icon: "Home", color: "#3b82f6", subcategories: ["Rent/Mortgage", "Electricity", "Internet", "Water"] },
+  { id: "cat-exp-3", name: "Transportation & Fuel", type: "expense", icon: "Car", color: "#f59e0b", subcategories: ["Fuel", "Public Transit", "Cab/Ride Hailing", "Vehicle Servicing"] },
+  { id: "cat-exp-4", name: "Shopping & Lifestyle", type: "expense", icon: "ShoppingBag", color: "#ec4899", subcategories: ["Clothing", "Electronics", "Gifts", "Personal Care"] },
+  { id: "cat-exp-5", name: "Entertainment & Subscriptions", type: "expense", icon: "Film", color: "#6366f1", subcategories: ["Streaming Services", "Gaming", "Concerts", "Books"] }
+];
+
+// In-memory data cache fallback
 let dbData = {
-  categories: [],
+  categories: DEFAULT_SEED_CATEGORIES,
   budget: { monthlyLimit: 3500 },
   transactions: []
 };
 
-// Check if MongoDB URI is provided
-const MONGODB_URI = process.env.MONGODB_URI;
-let isMongoConnected = false;
-
-// Mongoose Schemas & Models (if MongoDB URI is used)
+// Mongoose Schemas
 const transactionSchema = new mongoose.Schema({
   id: String,
   amount: Number,
@@ -62,27 +67,57 @@ const categorySchema = new mongoose.Schema({
   subcategories: [String]
 });
 
-const TransactionModel = mongoose.model('Transaction', transactionSchema);
-const CategoryModel = mongoose.model('Category', categorySchema);
+const budgetSchema = new mongoose.Schema({
+  monthlyLimit: Number
+});
 
-// Connect to MongoDB if URI provided, else load db.json
-async function initDatabase() {
-  if (MONGODB_URI) {
-    try {
-      await mongoose.connect(MONGODB_URI, {
-        serverSelectionTimeoutMS: 6000
-      });
-      isMongoConnected = true;
-      console.log('🍃 Successfully connected to MongoDB Atlas database!');
-    } catch (err) {
-      console.error('❌ MongoDB Connection failed, falling back to local db.json:', err.message);
-      loadJsonData();
-    }
-  } else {
-    console.log('ℹ️ No MONGODB_URI provided. Using local JSON database (server/data/db.json)');
-    loadJsonData();
+const TransactionModel = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);
+const CategoryModel = mongoose.models.Category || mongoose.model('Category', categorySchema);
+const BudgetModel = mongoose.models.Budget || mongoose.model('Budget', budgetSchema);
+
+// Cached Mongoose Connection for Serverless Functions
+let cachedDbPromise = null;
+const MONGODB_URI = process.env.MONGODB_URI;
+
+async function connectDB() {
+  if (!MONGODB_URI) {
+    return false;
   }
+  if (mongoose.connection.readyState === 1) {
+    return true;
+  }
+  if (!cachedDbPromise) {
+    cachedDbPromise = mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 8000,
+      bufferCommands: false
+    }).then(async (m) => {
+      console.log('🍃 MongoDB Atlas Connected!');
+      // Auto seed default categories if collection is empty
+      const catCount = await CategoryModel.countDocuments();
+      if (catCount === 0) {
+        await CategoryModel.insertMany(DEFAULT_SEED_CATEGORIES);
+        console.log('🌱 Seeded default categories into MongoDB!');
+      }
+      return m;
+    }).catch(err => {
+      console.error('❌ MongoDB Connection error:', err.message);
+      cachedDbPromise = null;
+      return false;
+    });
+  }
+  await cachedDbPromise;
+  return mongoose.connection.readyState === 1;
 }
+
+// Middleware to ensure DB connection on every request
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+  } catch (err) {
+    console.error('DB Middleware Connection error:', err);
+  }
+  next();
+});
 
 function loadJsonData() {
   try {
@@ -96,7 +131,7 @@ function loadJsonData() {
 }
 
 function saveJsonData() {
-  if (isMongoConnected) return;
+  if (mongoose.connection.readyState === 1) return;
   try {
     const dir = path.dirname(dataPath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -106,22 +141,26 @@ function saveJsonData() {
   }
 }
 
-// Initialize Database on Start
-initDatabase();
+// Load JSON data on start
+loadJsonData();
 
-// Health check endpoint
+// Health Check
 app.get('/api/health', (req, res) => {
+  const isMongo = mongoose.connection.readyState === 1;
   res.json({
     status: 'ok',
-    database: isMongoConnected ? 'MongoDB Atlas' : 'Local db.json Store',
+    database: isMongo ? 'MongoDB Atlas (Live Connected)' : 'Local Persistent Storage',
     message: 'SpendWise REST API Server running smoothly 🚀'
   });
 });
 
 // GET Categories
 app.get('/api/categories', async (req, res) => {
-  if (isMongoConnected) {
-    const cats = await CategoryModel.find().lean();
+  if (mongoose.connection.readyState === 1) {
+    let cats = await CategoryModel.find().lean();
+    if (cats.length === 0) {
+      cats = await CategoryModel.insertMany(DEFAULT_SEED_CATEGORIES);
+    }
     return res.json(cats);
   }
   res.json(dbData.categories || []);
@@ -141,7 +180,7 @@ app.post('/api/categories', async (req, res) => {
     subcategories: Array.isArray(subcategories) ? subcategories : []
   };
 
-  if (isMongoConnected) {
+  if (mongoose.connection.readyState === 1) {
     const created = await CategoryModel.create(newCategory);
     return res.status(201).json(created);
   }
@@ -155,7 +194,7 @@ app.post('/api/categories', async (req, res) => {
 app.put('/api/categories/:id', async (req, res) => {
   const { id } = req.params;
 
-  if (isMongoConnected) {
+  if (mongoose.connection.readyState === 1) {
     const updated = await CategoryModel.findOneAndUpdate({ id }, req.body, { new: true });
     return res.json(updated);
   }
@@ -172,7 +211,7 @@ app.put('/api/categories/:id', async (req, res) => {
 app.delete('/api/categories/:id', async (req, res) => {
   const { id } = req.params;
 
-  if (isMongoConnected) {
+  if (mongoose.connection.readyState === 1) {
     await CategoryModel.deleteOne({ id });
     return res.json({ message: 'Category deleted' });
   }
@@ -183,14 +222,22 @@ app.delete('/api/categories/:id', async (req, res) => {
 });
 
 // GET Budget
-app.get('/api/budget', (req, res) => {
+app.get('/api/budget', async (req, res) => {
+  if (mongoose.connection.readyState === 1) {
+    const b = await BudgetModel.findOne().lean();
+    return res.json(b || { monthlyLimit: 3500 });
+  }
   res.json(dbData.budget || { monthlyLimit: 3500 });
 });
 
 // PUT Budget
-app.put('/api/budget', (req, res) => {
+app.put('/api/budget', async (req, res) => {
   const { monthlyLimit } = req.body;
   if (typeof monthlyLimit === 'number' && monthlyLimit >= 0) {
+    if (mongoose.connection.readyState === 1) {
+      const b = await BudgetModel.findOneAndUpdate({}, { monthlyLimit }, { upsert: true, new: true });
+      return res.json(b);
+    }
     dbData.budget.monthlyLimit = monthlyLimit;
     saveJsonData();
   }
@@ -201,7 +248,7 @@ app.put('/api/budget', (req, res) => {
 app.get('/api/transactions', async (req, res) => {
   let list = [];
 
-  if (isMongoConnected) {
+  if (mongoose.connection.readyState === 1) {
     list = await TransactionModel.find().lean();
   } else {
     list = [...(dbData.transactions || [])];
@@ -249,18 +296,47 @@ app.post('/api/transactions', async (req, res) => {
   if (!type || !['income', 'expense'].includes(type.toLowerCase())) return res.status(400).json({ error: 'Type must be income or expense' });
   if (!category) return res.status(400).json({ error: 'Category is required' });
 
+  const catName = category.trim();
+
+  // If custom category typed, ensure category exists in DB so it never vanishes
+  if (mongoose.connection.readyState === 1) {
+    const existingCat = await CategoryModel.findOne({ name: catName, type: type.toLowerCase() });
+    if (!existingCat) {
+      await CategoryModel.create({
+        id: `cat-${Date.now()}`,
+        name: catName,
+        type: type.toLowerCase(),
+        icon: type.toLowerCase() === 'income' ? 'TrendingUp' : 'Tag',
+        color: type.toLowerCase() === 'income' ? '#10b981' : '#f43f5e',
+        subcategories: subcategory ? [subcategory.trim()] : []
+      });
+    }
+  } else {
+    const existingCat = dbData.categories.find(c => c.name.toLowerCase() === catName.toLowerCase() && c.type === type.toLowerCase());
+    if (!existingCat) {
+      dbData.categories.push({
+        id: `cat-${Date.now()}`,
+        name: catName,
+        type: type.toLowerCase(),
+        icon: type.toLowerCase() === 'income' ? 'TrendingUp' : 'Tag',
+        color: type.toLowerCase() === 'income' ? '#10b981' : '#f43f5e',
+        subcategories: subcategory ? [subcategory.trim()] : []
+      });
+    }
+  }
+
   const newTx = {
     id: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     amount: parseFloat(Number(amount).toFixed(2)),
     type: type.toLowerCase(),
-    category: category.trim(),
+    category: catName,
     subcategory: subcategory ? subcategory.trim() : '',
     date: date || new Date().toISOString().split('T')[0],
     notes: notes ? notes.trim() : '',
     paymentMethod: paymentMethod || 'Cash'
   };
 
-  if (isMongoConnected) {
+  if (mongoose.connection.readyState === 1) {
     const created = await TransactionModel.create(newTx);
     return res.status(201).json(created);
   }
@@ -274,7 +350,7 @@ app.post('/api/transactions', async (req, res) => {
 app.put('/api/transactions/:id', async (req, res) => {
   const { id } = req.params;
 
-  if (isMongoConnected) {
+  if (mongoose.connection.readyState === 1) {
     const updated = await TransactionModel.findOneAndUpdate({ id }, req.body, { new: true });
     return res.json(updated);
   }
@@ -296,7 +372,7 @@ app.put('/api/transactions/:id', async (req, res) => {
 app.delete('/api/transactions/:id', async (req, res) => {
   const { id } = req.params;
 
-  if (isMongoConnected) {
+  if (mongoose.connection.readyState === 1) {
     await TransactionModel.deleteOne({ id });
     return res.json({ message: 'Transaction deleted' });
   }
@@ -309,10 +385,15 @@ app.delete('/api/transactions/:id', async (req, res) => {
 // GET Dashboard Stats
 app.get('/api/dashboard/stats', async (req, res) => {
   let transactions = [];
-  if (isMongoConnected) {
+  let budgetObj = { monthlyLimit: 3500 };
+
+  if (mongoose.connection.readyState === 1) {
     transactions = await TransactionModel.find().lean();
+    const b = await BudgetModel.findOne().lean();
+    if (b) budgetObj = b;
   } else {
     transactions = dbData.transactions || [];
+    budgetObj = dbData.budget || { monthlyLimit: 3500 };
   }
 
   let totalIncome = 0;
@@ -337,7 +418,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
 
   const currentBalance = totalIncome - totalExpenses;
   const totalSavings = currentBalance > 0 ? currentBalance : 0;
-  const monthlyBudget = dbData.budget?.monthlyLimit || 3500;
+  const monthlyBudget = budgetObj.monthlyLimit || 3500;
   const monthlyProgress = Math.min(Math.round((monthlyExpenses / monthlyBudget) * 100), 100);
 
   const categoryMap = {};
@@ -370,7 +451,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
 // GET Reports
 app.get('/api/reports/monthly', async (req, res) => {
   let transactions = [];
-  if (isMongoConnected) {
+  if (mongoose.connection.readyState === 1) {
     transactions = await TransactionModel.find().lean();
   } else {
     transactions = dbData.transactions || [];
@@ -408,7 +489,11 @@ app.get('/api/reports/monthly', async (req, res) => {
   res.json(reportData);
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 SpendWise Express Server running on http://localhost:${PORT}`);
-});
+// Export Express app for Vercel Serverless Functions
+export default app;
+
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 SpendWise Express Server running on http://localhost:${PORT}`);
+  });
+}

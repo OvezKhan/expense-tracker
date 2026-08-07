@@ -1,9 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useExpense } from '../context/ExpenseContext';
-import { Plus, X, Zap, ArrowUpRight, ArrowDownRight, Check, Calendar, CreditCard, Tag } from 'lucide-react';
+import { Plus, X, Zap, ArrowUpRight, ArrowDownRight, Check, CreditCard, Tag } from 'lucide-react';
+
+const CURRENCY_SYMBOLS = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  INR: '₹',
+  CAD: 'CA$',
+  AUD: 'A$',
+  JPY: '¥'
+};
 
 export const QuickAddSheet = () => {
-  const { isQuickAddOpen, setIsQuickAddOpen, categories, addTransaction, showToast } = useExpense();
+  const { isQuickAddOpen, setIsQuickAddOpen, categories, addTransaction, showToast, currency } = useExpense();
 
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
@@ -14,9 +24,10 @@ export const QuickAddSheet = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   const amountInputRef = useRef(null);
+  const currencySymbol = CURRENCY_SYMBOLS[currency] || '$';
 
   const availableCategories = categories.filter(c => c.type === type);
-  const selectedCatObj = availableCategories.find(c => c.name === category);
+  const selectedCatObj = availableCategories.find(c => c.name.toLowerCase() === category.trim().toLowerCase());
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -62,8 +73,8 @@ export const QuickAddSheet = () => {
       showToast('Please enter a valid amount', 'error');
       return;
     }
-    if (!category) {
-      showToast('Please select a category', 'error');
+    if (!category.trim()) {
+      showToast('Please enter or select a category', 'error');
       return;
     }
 
@@ -71,8 +82,8 @@ export const QuickAddSheet = () => {
       await addTransaction({
         amount: Number(amount),
         type,
-        category,
-        subcategory,
+        category: category.trim(),
+        subcategory: subcategory.trim(),
         paymentMethod,
         date,
         notes
@@ -82,7 +93,7 @@ export const QuickAddSheet = () => {
       setNotes('');
       setIsQuickAddOpen(false);
     } catch (err) {
-      // Error handled by context
+      // Handled by context
     }
   };
 
@@ -105,7 +116,7 @@ export const QuickAddSheet = () => {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
           {/* Income vs Expense Selector */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'rgba(255,255,255,0.04)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'var(--bg-glass)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
             <button
               type="button"
               className={`nav-btn ${type === 'expense' ? 'active' : ''}`}
@@ -127,7 +138,7 @@ export const QuickAddSheet = () => {
           {/* Amount Input */}
           <div>
             <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-              AMOUNT ($)
+              AMOUNT ({currencySymbol})
             </label>
             <input
               ref={amountInputRef}
@@ -142,10 +153,10 @@ export const QuickAddSheet = () => {
             />
           </div>
 
-          {/* Fast Smart Amount Chips */}
+          {/* Quick Amount Chips */}
           <div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '0.35rem', fontWeight: '600' }}>
-              QUICK AMOUNTS:
+              QUICK PRESETS:
             </div>
             <div className="chip-group" style={{ marginBottom: 0 }}>
               {[10, 25, 50, 100, 250, 500].map((quickAmt) => (
@@ -155,23 +166,43 @@ export const QuickAddSheet = () => {
                   className={`chip-btn ${Number(amount) === quickAmt ? 'selected' : ''}`}
                   onClick={() => setAmount(quickAmt.toString())}
                 >
-                  ${quickAmt}
+                  {currencySymbol}{quickAmt}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Category Chips Selection */}
+          {/* Smart Category Input + Datalist Suggestions */}
           <div>
             <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-              CATEGORY
+              CATEGORY (Type or Select)
             </label>
-            <div className="chip-group" style={{ marginBottom: 0 }}>
+            <input
+              type="text"
+              list="category-suggestions"
+              className="input-field"
+              style={{ padding: '0.65rem 1rem' }}
+              placeholder="Select or type custom category..."
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                setSubcategory('');
+              }}
+              required
+            />
+            <datalist id="category-suggestions">
+              {availableCategories.map((c) => (
+                <option key={c.id} value={c.name} />
+              ))}
+            </datalist>
+
+            {/* Quick Category Touch Chips */}
+            <div className="chip-group" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
               {availableCategories.map((cat) => (
                 <button
                   key={cat.id}
                   type="button"
-                  className={`chip-btn ${category === cat.name ? 'selected' : ''}`}
+                  className={`chip-btn ${category.toLowerCase() === cat.name.toLowerCase() ? 'selected' : ''}`}
                   onClick={() => {
                     setCategory(cat.name);
                     setSubcategory('');
@@ -183,8 +214,8 @@ export const QuickAddSheet = () => {
             </div>
           </div>
 
-          {/* Subcategory dropdown */}
-          {selectedCatObj && selectedCatObj.subcategories?.length > 0 && (
+          {/* Subcategory */}
+          {selectedCatObj && selectedCatObj.subcategories?.length > 0 ? (
             <div>
               <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
                 SUBCATEGORY
@@ -200,6 +231,20 @@ export const QuickAddSheet = () => {
                   <option key={idx} value={sub}>{sub}</option>
                 ))}
               </select>
+            </div>
+          ) : (
+            <div>
+              <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                SUBCATEGORY (OPTIONAL)
+              </label>
+              <input
+                type="text"
+                className="input-field"
+                style={{ padding: '0.65rem 1rem' }}
+                placeholder="e.g. Groceries, Coffee..."
+                value={subcategory}
+                onChange={(e) => setSubcategory(e.target.value)}
+              />
             </div>
           )}
 

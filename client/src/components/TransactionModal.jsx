@@ -2,8 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useExpense } from '../context/ExpenseContext';
 import { X, Check } from 'lucide-react';
 
+const CURRENCY_SYMBOLS = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  INR: '₹',
+  CAD: 'CA$',
+  AUD: 'A$',
+  JPY: '¥'
+};
+
 export const TransactionModal = () => {
-  const { editingTransaction, setEditingTransaction, categories, updateTransaction } = useExpense();
+  const { editingTransaction, setEditingTransaction, categories, updateTransaction, currency } = useExpense();
 
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
@@ -12,6 +22,8 @@ export const TransactionModal = () => {
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [notes, setNotes] = useState('');
   const [date, setDate] = useState('');
+
+  const currencySymbol = CURRENCY_SYMBOLS[currency] || '$';
 
   useEffect(() => {
     if (editingTransaction) {
@@ -28,17 +40,18 @@ export const TransactionModal = () => {
   if (!editingTransaction) return null;
 
   const availableCategories = categories.filter(c => c.type === type);
-  const selectedCatObj = availableCategories.find(c => c.name === category);
+  const selectedCatObj = availableCategories.find(c => c.name.toLowerCase() === category.trim().toLowerCase());
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!amount || Number(amount) <= 0) return;
+    if (!category.trim()) return;
 
     await updateTransaction(editingTransaction.id, {
       amount: Number(amount),
       type,
-      category,
-      subcategory,
+      category: category.trim(),
+      subcategory: subcategory.trim(),
       paymentMethod,
       date,
       notes
@@ -78,7 +91,7 @@ export const TransactionModal = () => {
 
             <div>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                Amount ($)
+                Amount ({currencySymbol})
               </label>
               <input
                 type="number"
@@ -95,23 +108,26 @@ export const TransactionModal = () => {
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
               Category
             </label>
-            <select
-              className="select-field"
-              style={{ width: '100%' }}
+            <input
+              type="text"
+              list="edit-category-suggestions"
+              className="input-field"
+              placeholder="Select or type custom category..."
               value={category}
               onChange={(e) => {
                 setCategory(e.target.value);
                 setSubcategory('');
               }}
-            >
-              <option value="">Select Category</option>
+              required
+            />
+            <datalist id="edit-category-suggestions">
               {availableCategories.map(c => (
-                <option key={c.id} value={c.name}>{c.name}</option>
+                <option key={c.id} value={c.name} />
               ))}
-            </select>
+            </datalist>
           </div>
 
-          {selectedCatObj && selectedCatObj.subcategories?.length > 0 && (
+          {selectedCatObj && selectedCatObj.subcategories?.length > 0 ? (
             <div>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
                 Subcategory
@@ -127,6 +143,18 @@ export const TransactionModal = () => {
                   <option key={i} value={sub}>{sub}</option>
                 ))}
               </select>
+            </div>
+          ) : (
+            <div>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                Subcategory (Optional)
+              </label>
+              <input
+                type="text"
+                className="input-field"
+                value={subcategory}
+                onChange={(e) => setSubcategory(e.target.value)}
+              />
             </div>
           )}
 
