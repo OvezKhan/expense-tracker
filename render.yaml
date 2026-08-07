@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: spendwise-expense-tracker
+    env: node
+    buildCommand: npm run setup && npm run build:client
+    startCommand: npm start
+    envVars:
+      - key: MONGODB_URI
+        value: mongodb+srv://khanovez257_db_user:CPVPPrzBRdLO9GUr@cluster0.qbsrsm9.mongodb.net/expense_tracker?retryWrites=true&w=majority&appName=Cluster0
+      - key: PORT
+        value: 5000

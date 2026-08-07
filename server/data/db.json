@@ -1,0 +1,200 @@
+{
+  "categories": [
+    {
+      "id": "cat-inc-1",
+      "name": "Salary",
+      "type": "income",
+      "icon": "Briefcase",
+      "color": "#10b981",
+      "subcategories": [
+        "Primary Job",
+        "Bonus",
+        "Overtime"
+      ]
+    },
+    {
+      "id": "cat-inc-2",
+      "name": "Freelance & Consulting",
+      "type": "income",
+      "icon": "Laptop",
+      "color": "#06b6d4",
+      "subcategories": [
+        "Web Design",
+        "Development",
+        "Mentorship"
+      ]
+    },
+    {
+      "id": "cat-inc-3",
+      "name": "Investments",
+      "type": "income",
+      "icon": "TrendingUp",
+      "color": "#8b5cf6",
+      "subcategories": [
+        "Dividends",
+        "Crypto",
+        "Real Estate"
+      ]
+    },
+    {
+      "id": "cat-exp-1",
+      "name": "Food & Dining",
+      "type": "expense",
+      "icon": "Utensils",
+      "color": "#f43f5e",
+      "subcategories": [
+        "Groceries",
+        "Restaurants",
+        "Coffee & Snacks",
+        "Food Delivery"
+      ]
+    },
+    {
+      "id": "cat-exp-2",
+      "name": "Housing & Utilities",
+      "type": "expense",
+      "icon": "Home",
+      "color": "#3b82f6",
+      "subcategories": [
+        "Rent/Mortgage",
+        "Electricity",
+        "Internet",
+        "Water"
+      ]
+    },
+    {
+      "id": "cat-exp-3",
+      "name": "Transportation & Fuel",
+      "type": "expense",
+      "icon": "Car",
+      "color": "#f59e0b",
+      "subcategories": [+
+        "Fuel",
+        "Public Transit",
+        "Cab/Ride Hailing",
+        "Vehicle Servicing"
+      ]
+    },
+    {
+      "id": "cat-exp-4",
+      "name": "Shopping & Lifestyle",
+      "type": "expense",
+      "icon": "ShoppingBag",
+      "color": "#ec4899",
+      "subcategories": [
+        "Clothing",
+        "Electronics",
+        "Gifts",
+        "Personal Care"
+      ]
+    },
+    {
+      "id": "cat-exp-5",
+      "name": "Entertainment & Subscriptions",
+      "type": "expense",
+      "icon": "Film",
+      "color": "#6366f1",
+      "subcategories": [
+        "Streaming Services",
+        "Gaming",
+        "Concerts",
+        "Books"
+      ]
+    }
+  ],
+  "budget": {
+    "monthlyLimit": 3500
+  },
+  "transactions": [
+    {
+      "id": "tx-1786046150276-221",
+      "amount": 10,
+      "type": "expense",
+      "category": "Shopping & Lifestyle",
+      "subcategory": "",
+      "date": "2026-08-06",
+      "notes": "",
+      "paymentMethod": "Cash"
+    },
+    {
+      "id": "tx-1786046002898-95",
+      "amount": 3,
+      "type": "expense",
+      "category": "Food & Dining",
+      "subcategory": "",
+      "date": "2026-08-06",
+      "notes": "",
+      "paymentMethod": "Cash"
+    },
+    {
+      "id": "tx-101",
+      "amount": 4200,
+      "type": "income",
+      "category": "Salary",
+      "subcategory": "Primary Job",
+      "date": "2026-08-01",
+      "paymentMethod": "Bank Transfer",
+      "notes": "Monthly Salary Payout"
+    },
+    {
+      "id": "tx-102",
+      "amount": 650,
+      "type": "income",
+      "category": "Freelance & Consulting",
+      "subcategory": "Web Design",
+      "date": "2026-08-03",
+      "paymentMethod": "UPI",
+      "notes": "Client project UI design completion milestone"
+    },
+    {
+      "id": "tx-103",
+      "amount": 1200,
+      "type": "expense",
+      "category": "Housing & Utilities",
+      "subcategory": "Rent/Mortgage",
+      "date": "2026-08-02",
+      "paymentMethod": "Bank Transfer",
+      "notes": "August Apartment Rent"
+    },
+    {
+      "id": "tx-104",
+      "amount": 145.5,
+      "type": "expense",
+      "category": "Food & Dining",
+      "subcategory": "Groceries",
+      "date": "2026-08-04",
+      "paymentMethod": "Credit Card",
+      "notes": "Weekly supermarket essentials"
+    },
+    {
+      "id": "tx-105",
+      "amount": 65,
+      "type": "expense",
+      "category": "Transportation & Fuel",
+      "subcategory": "Fuel",
+      "date": "2026-08-05",
+      "paymentMethod": "Debit Card",
+      "notes": "Car gas refuel"
+    },
+    {
+      "id": "tx-106",
+      "amount": 29.99,
+      "type": "expense",
+      "category": "Entertainment & Subscriptions",
+      "subcategory": "Streaming Services",
+      "date": "2026-08-05",
+      "paymentMethod": "Credit Card",
+      "notes": "Netflix & Spotify monthly bundle"
+    },
+    {
+      "id": "tx-107",
+      "amount": 88,
+      "type": "expense",
+      "category": "Food & Dining",
+      "subcategory": "Restaurants",
+      "date": "2026-08-06",
+      "paymentMethod": "UPI",
+      "notes": "Dinner with friends"
+    }
+  ]
+}
