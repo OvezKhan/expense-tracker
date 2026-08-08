@@ -7,7 +7,7 @@
     "server": "npm run dev --prefix server",
     "client": "npm run dev --prefix client",
     "dev": "concurrently -n \"SERVER,CLIENT\" -c \"cyan,magenta\" \"npm run server\" \"npm run client\"",
-    "build:client": "npm run build --prefix client",
+    "build:client": "npm run build --prefix client && npm run build --prefix client",
     "start": "npm start --prefix server"
   },
   "devDependencies": {
