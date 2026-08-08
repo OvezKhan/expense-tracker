@@ -9,3 +9,5 @@ services:
         value: mongodb+srv://khanovez257_db_user:CPVPPrzBRdLO9GUr@cluster0.qbsrsm9.mongodb.net/expense_tracker?retryWrites=true&w=majority&appName=Cluster0
       - key: PORT
         value: 5000
+
+

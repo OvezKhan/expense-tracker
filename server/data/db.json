@@ -68,7 +68,7 @@
       "type": "expense",
       "icon": "Car",
       "color": "#f59e0b",
-      "subcategories": [+
+      "subcategories": [
         "Fuel",
         "Public Transit",
         "Cab/Ride Hailing",
