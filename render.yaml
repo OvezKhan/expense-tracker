@@ -8,7 +8,7 @@ services:
     startCommand: node index.js
     envVars:
       - key: MONGODB_URI
-        value: mongodb+srv://khanovez257_db_user:CPVPPrzBRdLO9GUr@cluster0.qbsrsm9.mongodb.net/expense_tracker?retryWrites=true&w=majority&appName=Cluster0
+        sync: false
       - key: PORT
         value: 5000
 
