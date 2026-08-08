@@ -15,6 +15,8 @@ import {
 } from 'recharts';
 import { BarChart3, TrendingUp, TrendingDown, PiggyBank, Printer } from 'lucide-react';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 export const Reports = () => {
   const { stats, exportToCSV, formatCurrency } = useExpense();
   const [monthlyTrendData, setMonthlyTrendData] = useState([]);
@@ -23,7 +25,7 @@ export const Reports = () => {
   useEffect(() => {
     const fetchMonthlyReport = async () => {
       try {
-        const res = await fetch('/api/reports/monthly');
+        const res = await fetch(`${API_BASE}/api/reports/monthly`);
         if (res.ok) {
           const data = await res.json();
           setMonthlyTrendData(data);

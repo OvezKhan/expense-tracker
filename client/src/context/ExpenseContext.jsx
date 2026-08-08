@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 const ExpenseContext = createContext();
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 const CURRENCY_SYMBOLS = {
   USD: '$',
   EUR: '€',
@@ -85,7 +87,7 @@ export const ExpenseProvider = ({ children }) => {
   // Fetch Categories
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch('/api/categories');
+      const res = await fetch(`${API_BASE}/api/categories`);
       if (res.ok) {
         const data = await res.json();
         setCategories(data);
@@ -98,7 +100,7 @@ export const ExpenseProvider = ({ children }) => {
   // Fetch Dashboard Stats
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch('/api/dashboard/stats');
+      const res = await fetch(`${API_BASE}/api/dashboard/stats`);
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -119,7 +121,7 @@ export const ExpenseProvider = ({ children }) => {
         }
       });
 
-      const res = await fetch(`/api/transactions?${params.toString()}`);
+      const res = await fetch(`${API_BASE}/api/transactions?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setTransactions(data);
@@ -145,7 +147,7 @@ export const ExpenseProvider = ({ children }) => {
   // Add Transaction
   const addTransaction = async (txData) => {
     try {
-      const res = await fetch('/api/transactions', {
+      const res = await fetch(`${API_BASE}/api/transactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(txData)
@@ -170,7 +172,7 @@ export const ExpenseProvider = ({ children }) => {
   // Update Transaction
   const updateTransaction = async (id, txData) => {
     try {
-      const res = await fetch(`/api/transactions/${id}`, {
+      const res = await fetch(`${API_BASE}/api/transactions/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(txData)
@@ -193,7 +195,7 @@ export const ExpenseProvider = ({ children }) => {
   // Delete Transaction
   const deleteTransaction = async (id) => {
     try {
-      const res = await fetch(`/api/transactions/${id}`, {
+      const res = await fetch(`${API_BASE}/api/transactions/${id}`, {
         method: 'DELETE'
       });
 
@@ -210,7 +212,7 @@ export const ExpenseProvider = ({ children }) => {
   // Add Category
   const addCategory = async (catData) => {
     try {
-      const res = await fetch('/api/categories', {
+      const res = await fetch(`${API_BASE}/api/categories`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(catData)
@@ -228,7 +230,7 @@ export const ExpenseProvider = ({ children }) => {
   // Update Category
   const updateCategory = async (id, catData) => {
     try {
-      const res = await fetch(`/api/categories/${id}`, {
+      const res = await fetch(`${API_BASE}/api/categories/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(catData)
@@ -246,7 +248,7 @@ export const ExpenseProvider = ({ children }) => {
   // Delete Category
   const deleteCategory = async (id) => {
     try {
-      const res = await fetch(`/api/categories/${id}`, {
+      const res = await fetch(`${API_BASE}/api/categories/${id}`, {
         method: 'DELETE'
       });
 
@@ -262,7 +264,7 @@ export const ExpenseProvider = ({ children }) => {
   // Update Budget Limit
   const updateBudget = async (newLimit) => {
     try {
-      const res = await fetch('/api/budget', {
+      const res = await fetch(`${API_BASE}/api/budget`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ monthlyLimit: Number(newLimit) })
@@ -357,7 +359,6 @@ export const ExpenseProvider = ({ children }) => {
         throw new Error('Invalid backup file format');
       }
 
-      // Restore elements sequentially
       parsed.transactions.forEach(async (tx) => {
         await addTransaction(tx);
       });
