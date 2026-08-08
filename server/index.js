@@ -21,7 +21,16 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Explicit permissive CORS middleware for separate frontend/backend deployments
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Handle preflight OPTIONS requests for all routes
+app.options('*', cors());
+
 app.use(express.json());
 
 // Path to JSON persistence file
@@ -75,7 +84,7 @@ const TransactionModel = mongoose.models.Transaction || mongoose.model('Transact
 const CategoryModel = mongoose.models.Category || mongoose.model('Category', categorySchema);
 const BudgetModel = mongoose.models.Budget || mongoose.model('Budget', budgetSchema);
 
-// Cached Mongoose Connection for Serverless Functions
+// Cached Mongoose Connection for Serverless & Standalone Functions
 let cachedDbPromise = null;
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -92,7 +101,6 @@ async function connectDB() {
       bufferCommands: false
     }).then(async (m) => {
       console.log('🍃 MongoDB Atlas Connected!');
-      // Auto seed default categories if collection is empty
       const catCount = await CategoryModel.countDocuments();
       if (catCount === 0) {
         await CategoryModel.insertMany(DEFAULT_SEED_CATEGORIES);
@@ -298,7 +306,7 @@ app.post('/api/transactions', async (req, res) => {
 
   const catName = category.trim();
 
-  // If custom category typed, ensure category exists in DB so it never vanishes
+  // Ensure category exists in DB so it never vanishes
   if (mongoose.connection.readyState === 1) {
     const existingCat = await CategoryModel.findOne({ name: catName, type: type.toLowerCase() });
     if (!existingCat) {
